@@ -1,4 +1,4 @@
-# hdl_probe
+# hdl-probe
 
 `hdl_probe` is a DSim HDL path probe library centered on a single core package, `hdl_probe_pkg`. It supports packed 4-state logic (`0/1/X/Z`) and `real`.
 The DPI declarations live in that package file, so the SV side carries as a single package source.
