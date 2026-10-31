@@ -8,6 +8,9 @@
 
 #define vpi_release_handle vpi_free_object
 
+/* Keep in sync with HdlProbeMaxW in sv/hdl_probe_pkg.sv. */
+#define HDL_PROBE_MAX_W 1024
+
 enum {
   HDL_PROBE_OK = 0,
   HDL_PROBE_NOT_FOUND = 1,
@@ -28,7 +31,6 @@ typedef struct hdl_probe_s {
   int sv_key;
   int kind;
   int size;
-  unsigned int top_mask;
 } hdl_probe_t;
 
 extern void hdl_probe_value_change_notify(int sv_key);
@@ -166,11 +168,6 @@ void *hdl_probe_dpi_create(const char *path, int sv_key, int *status) {
   probe->kind = kind;
   probe->size = size;
   probe->cb = NULL;
-  if (kind == HDL_PROBE_KIND_LOGIC4 && size > 0) {
-    probe->top_mask = (size % 32 == 0) ? 0xffffffffu : ((1u << (size % 32)) - 1u);
-  } else {
-    probe->top_mask = 0xffffffffu;
-  }
 
   if (status != NULL) {
     *status = HDL_PROBE_OK;
@@ -257,68 +254,38 @@ int hdl_probe_dpi_get_size(void *hnd) {
   return (probe == NULL) ? 0 : probe->size;
 }
 
-int hdl_probe_dpi_read_logic_words(void *hnd, const svOpenArrayHandle avals,
-                                   const svOpenArrayHandle bvals) {
+int hdl_probe_dpi_read_logic(void *hnd, svLogicVecVal *dst) {
   hdl_probe_t *probe = checked_probe(hnd);
   s_vpi_value value_s = {0};
   p_vpi_vecval vec;
-  /* VPI and DPI vector records have the same layout, but need not be the
-   * same C struct type. This is a VPI value, so keep its VPI type. */
-  s_vpi_vecval word;
-  unsigned int *dst_aval;
-  unsigned int *dst_bval;
-  int array_size;
-  int low;
-  int increment;
+  unsigned int last_word_mask;
   int num_chunks;
 
-  if (probe == NULL || probe->kind != HDL_PROBE_KIND_LOGIC4 || avals == NULL ||
-      bvals == NULL) {
-    return 0;
-  }
-
-  if (svDimensions(avals) != 1 || svDimensions(bvals) != 1) {
+  if (probe == NULL || probe->kind != HDL_PROBE_KIND_LOGIC4 ||
+      probe->size < 1 || probe->size > HDL_PROBE_MAX_W || dst == NULL) {
     return 0;
   }
 
   num_chunks = (probe->size + 31) / 32;
-  array_size = svSize(avals, 1);
-  if (array_size < num_chunks) {
-    return 0;
-  }
-  if (svSize(bvals, 1) < num_chunks) {
-    return 0;
-  }
-
-  low = svLow(avals, 1);
-  increment = svIncrement(avals, 1);
-  if (svLow(bvals, 1) != low || svIncrement(bvals, 1) != increment) {
-    return 0;
-  }
+  last_word_mask = (probe->size % 32 == 0) ? 0xffffffffu :
+                   ((1u << (probe->size % 32)) - 1u);
 
   value_s.format = vpiVectorVal;
   vpi_get_value(probe->obj, &value_s);
   vec = value_s.value.vector;
-  if (vec == NULL) {
+  if (value_s.format != vpiVectorVal || vec == NULL) {
     return 0;
   }
 
   for (int chunk = 0; chunk < num_chunks; chunk++) {
-    word = vec[chunk];
-    if (chunk == (num_chunks - 1) && (probe->size % 32) != 0) {
-      word.aval &= probe->top_mask;
-      word.bval &= probe->top_mask;
-    }
-    /* Chunk zero belongs at the lowest SV index. svIncrement describes
-     * $increment (left >= right ? 1 : -1), not a step from svLow.
-     * In particular, the package's int words[32] has increment -1. */
-    dst_aval = (unsigned int *)svGetArrElemPtr1(avals, low + chunk);
-    dst_bval = (unsigned int *)svGetArrElemPtr1(bvals, low + chunk);
-    if (dst_aval == NULL || dst_bval == NULL) {
-      return 0;
-    }
-    *dst_aval = word.aval;
-    *dst_bval = word.bval;
+    dst[chunk].aval = vec[chunk].aval;
+    dst[chunk].bval = vec[chunk].bval;
+  }
+  dst[num_chunks - 1].aval &= last_word_mask;
+  dst[num_chunks - 1].bval &= last_word_mask;
+  for (int chunk = num_chunks; chunk < HDL_PROBE_MAX_W / 32; chunk++) {
+    dst[chunk].aval = 0;
+    dst[chunk].bval = 0;
   }
 
   return 1;

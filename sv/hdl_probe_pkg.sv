@@ -6,7 +6,6 @@ package hdl_probe_pkg;
   typedef class hdl_probe_cb;
 
   localparam int unsigned HdlProbeMaxW = 1024;
-  localparam int unsigned HdlProbeMaxChunks = (HdlProbeMaxW + 31) / 32;
 
   typedef enum int {
     HDL_PROBE_OK = 0,
@@ -37,10 +36,9 @@ package hdl_probe_pkg;
   );
   import "DPI-C" context function int hdl_probe_dpi_get_kind(input chandle hnd);
   import "DPI-C" context function int hdl_probe_dpi_get_size(input chandle hnd);
-  import "DPI-C" context function int hdl_probe_dpi_read_logic_words(
+  import "DPI-C" context function int hdl_probe_dpi_read_logic(
     input chandle hnd,
-    output int unsigned avals[],
-    output int unsigned bvals[]
+    output logic [HdlProbeMaxW-1:0] value
   );
   import "DPI-C" context function int hdl_probe_dpi_read_real(
     input chandle hnd,
@@ -371,10 +369,6 @@ package hdl_probe_pkg;
 
     function hdl_probe_status_e read(ref hdl_probe_value v);
       hdl_probe_status_e st;
-      int unsigned aval_words[HdlProbeMaxChunks];
-      int unsigned bval_words[HdlProbeMaxChunks];
-      int unsigned bit_index;
-      int unsigned num_chunks;
       real r_value;
 
       st = connect();
@@ -390,44 +384,20 @@ package hdl_probe_pkg;
       v.kind   = m_kind;
       v.n_bits = m_n_bits;
 
-      case (m_kind)
-        HDL_PROBE_KIND_LOGIC4: begin
-          num_chunks = (m_n_bits + 31) / 32;
-          if (!hdl_probe_dpi_read_logic_words(m_handle, aval_words, bval_words)) begin
+      case (int'(m_kind))
+        int'(HDL_PROBE_KIND_LOGIC4): begin
+          if (!hdl_probe_dpi_read_logic(m_handle, v.logic4)) begin
             return HDL_PROBE_READ_ERROR;
-          end
-          for (int unsigned chunk = 0; chunk < num_chunks; chunk++) begin
-            for (int unsigned bit_in_chunk = 0; bit_in_chunk < 32; bit_in_chunk++) begin
-              bit_index = (chunk * 32) + bit_in_chunk;
-              if (bit_index >= m_n_bits) begin
-                break;
-              end
-              case ({
-                aval_words[chunk][bit_in_chunk], bval_words[chunk][bit_in_chunk]
-              })
-                2'b00:   v.logic4[bit_index] = 1'b0;
-                2'b10:   v.logic4[bit_index] = 1'b1;
-                2'b11:   v.logic4[bit_index] = 1'bx;
-                default: v.logic4[bit_index] = 1'bz;
-              endcase
-            end
-          end
-          for (int unsigned bit_idx = m_n_bits; bit_idx < HdlProbeMaxW; bit_idx++) begin
-            v.logic4[bit_idx] = 1'b0;
           end
           return HDL_PROBE_OK;
         end
 
-        HDL_PROBE_KIND_REAL: begin
+        int'(HDL_PROBE_KIND_REAL): begin
           if (!hdl_probe_dpi_read_real(m_handle, r_value)) begin
             return HDL_PROBE_READ_ERROR;
           end
           v.r = r_value;
           return HDL_PROBE_OK;
-        end
-
-        HDL_PROBE_KIND_UNKNOWN: begin
-          return HDL_PROBE_UNSUPPORTED_KIND;
         end
 
         default: begin

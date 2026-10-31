@@ -107,39 +107,6 @@ module probe_values;
       $fatal(1, "get_real on logic must fail and zero output");
   endtask
 
-  task automatic check_raw_33(int mode);
-    chandle handle;
-    int c_status;
-    int unsigned asc_a[5:6];
-    int unsigned asc_b[5:6];
-    int unsigned desc_a[6:5];
-    int unsigned desc_b[6:5];
-    int unsigned expected_a0, expected_b0, expected_a1, expected_b1;
-
-    // Literal canonical VPI words: also test the C top-word mask, which
-    // the SV class's own bit-by-bit reconstruction could otherwise hide.
-    case (mode)
-      0: begin expected_a0 = 0; expected_b0 = 0; expected_a1 = 0; expected_b1 = 0; end
-      1: begin expected_a0 = '1; expected_b0 = 0; expected_a1 = 1; expected_b1 = 0; end
-      2: begin expected_a0 = '1; expected_b0 = '1; expected_a1 = 1; expected_b1 = 1; end
-      3: begin expected_a0 = 0; expected_b0 = '1; expected_a1 = 0; expected_b1 = 1; end
-      4: begin expected_a0 = 'h66666666; expected_b0 = 'hcccccccc; expected_a1 = 0; expected_b1 = 0; end
-      5: begin expected_a0 = 'h40000001; expected_b0 = 'hc0000000; expected_a1 = 1; expected_b1 = 0; end
-      default: $fatal(1, "bad raw oracle mode");
-    endcase
-    handle = hdl_probe_dpi_create("probe_values.w33", -1, c_status);
-    if (handle == null || c_status != HDL_PROBE_OK) $fatal(1, "raw create failed");
-    if (!hdl_probe_dpi_read_logic_words(handle, asc_a, asc_b) ||
-        !hdl_probe_dpi_read_logic_words(handle, desc_a, desc_b))
-      $fatal(1, "raw word read failed mode=%0d", mode);
-    if (asc_a[5] !== expected_a0 || asc_b[5] !== expected_b0 ||
-        asc_a[6] !== expected_a1 || asc_b[6] !== expected_b1 ||
-        desc_a[5] !== expected_a0 || desc_b[5] !== expected_b0 ||
-        desc_a[6] !== expected_a1 || desc_b[6] !== expected_b1)
-      $fatal(1, "raw words/index direction/top-mask mismatch mode=%0d", mode);
-    if (!hdl_probe_dpi_destroy(handle)) $fatal(1, "raw destroy failed");
-  endtask
-
   initial begin : test
     hdl_probe p;
     hdl_probe_value v;
@@ -161,7 +128,6 @@ module probe_values;
       check_packed("probe_values.w32", 32, mode);
       check_packed("probe_values.w33", 33, mode);
       check_packed("probe_values.w1024", 1024, mode);
-      check_raw_33(mode);
     end
 
     p = hdl_probe::get("probe_values.analog_value");
