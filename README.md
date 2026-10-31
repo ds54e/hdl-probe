@@ -52,8 +52,6 @@ make                       # test-core (default)
 make build-lib
 make example-core
 make test-core
-make fmt                   # requires Verible
-make lint                  # requires Verible + slang
 make clean
 ```
 

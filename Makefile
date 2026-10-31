@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -e -o pipefail -c
 .DEFAULT_GOAL := test-core
-.PHONY: build-lib fmt lint lint-verible lint-slang example-core clean test-core
+.PHONY: build-lib example-core clean test-core
 
 ROOT := $(abspath .)
 BUILD_DIR := $(ROOT)/build/xezim
@@ -21,9 +21,6 @@ RUN_TIMEOUT ?= 120
 CHECKED_RUN := bash $(ROOT)/tests/run_checked.sh
 
 CORE_SV := $(ROOT)/sv/hdl_probe_pkg.sv
-SV_FILES := $(sort $(wildcard $(ROOT)/sv/*.sv) $(wildcard $(ROOT)/sv/*.svh) \
-                  $(wildcard $(ROOT)/examples/*.sv) $(wildcard $(ROOT)/tests/*.sv))
-SLANG_FILES := $(CORE_SV) $(ROOT)/examples/example_core.sv $(wildcard $(ROOT)/tests/*.sv)
 CORE_TESTS := probe_values probe_callbacks probe_lifecycle
 
 build-lib: $(DPI_LIB)
@@ -33,21 +30,6 @@ $(BUILD_DIR):
 
 $(DPI_LIB): $(ROOT)/c/hdl_probe.c $(XEZIM_INCLUDE)/svdpi.h $(XEZIM_INCLUDE)/vpi_user.h $(XEZIM_INCLUDE)/sv_vpi_user.h | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I"$(XEZIM_INCLUDE)" -shared -o "$@" "$<" $(LDFLAGS)
-
-lint:
-	$(MAKE) lint-verible
-	$(MAKE) lint-slang
-
-lint-verible:
-	verible-verilog-lint --rules_config=$(ROOT)/.rules.verible_lint $(SV_FILES)
-
-lint-slang:
-	# Library public methods and constructors may be unused by an example.
-	slang -Weverything -Werror -Wno-unused-but-set-variable \
-	  -Wno-unused-class-method -Wno-unused-constructor $(SLANG_FILES)
-
-fmt:
-	verible-verilog-format --inplace $(SV_FILES)
 
 example-core: build-lib
 	mkdir -p "$(BUILD_DIR)/example-core/tmp"

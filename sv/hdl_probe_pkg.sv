@@ -1,5 +1,4 @@
 package hdl_probe_pkg;
-  timeunit 1ns; timeprecision 1ps;
 
   typedef class hdl_probe;
   typedef class hdl_probe_value;
@@ -329,15 +328,15 @@ package hdl_probe_pkg;
       v.kind   = m_kind;
       v.n_bits = m_n_bits;
 
-      case (int'(m_kind))
-        int'(HDL_PROBE_KIND_LOGIC4): begin
+      case (m_kind)
+        HDL_PROBE_KIND_LOGIC4: begin
           if (!hdl_probe_dpi_read_logic(m_handle, v.logic4)) begin
             return HDL_PROBE_READ_ERROR;
           end
           return HDL_PROBE_OK;
         end
 
-        int'(HDL_PROBE_KIND_REAL): begin
+        HDL_PROBE_KIND_REAL: begin
           if (!hdl_probe_dpi_read_real(m_handle, r_value)) begin
             return HDL_PROBE_READ_ERROR;
           end
