@@ -1,2 +1,0 @@
-mkdir -p "/home/dot-worker/hdl-probe-20261031/source-001/build/xezim"
-gcc -std=c11 -fPIC -g -Wall -Wextra -Werror -I"/home/dot-worker/hdl-probe-20261031/tools/xezim/include" -shared -o "/home/dot-worker/hdl-probe-20261031/source-001/build/xezim/libhdl_probe_dpi.so" "/home/dot-worker/hdl-probe-20261031/source-001/c/hdl_probe.c" 
