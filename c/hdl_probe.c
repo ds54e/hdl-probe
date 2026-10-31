@@ -13,6 +13,7 @@ enum {
   HDL_PROBE_OK = 0,
   HDL_PROBE_NOT_FOUND = 1,
   HDL_PROBE_UNSUPPORTED_KIND = 2,
+  HDL_PROBE_TOO_WIDE = 3,
   HDL_PROBE_INTERNAL_ERROR = 5
 };
 
@@ -122,11 +123,22 @@ static PLI_INT32 hdl_probe_dpi_value_change_callback(p_cb_data cb_data) {
   return 1;
 }
 
-void *hdl_probe_dpi_create(const char *path, int sv_key, int *status) {
+void *hdl_probe_dpi_create(const char *path, int sv_key, int *status,
+                           int *kind, int *size) {
   vpiHandle obj;
   hdl_probe_t *probe;
-  int kind;
-  int size;
+  int obj_kind;
+  int obj_size;
+
+  if (status != NULL) {
+    *status = HDL_PROBE_INTERNAL_ERROR;
+  }
+  if (kind != NULL) {
+    *kind = HDL_PROBE_KIND_UNKNOWN;
+  }
+  if (size != NULL) {
+    *size = 0;
+  }
 
   if (g_pkg_scope == NULL) {
     g_pkg_scope = svGetScope();
@@ -140,8 +152,8 @@ void *hdl_probe_dpi_create(const char *path, int sv_key, int *status) {
     return NULL;
   }
 
-  kind = object_kind(obj);
-  if (kind == HDL_PROBE_KIND_UNKNOWN) {
+  obj_kind = object_kind(obj);
+  if (obj_kind == HDL_PROBE_KIND_UNKNOWN) {
     if (status != NULL) {
       *status = HDL_PROBE_UNSUPPORTED_KIND;
     }
@@ -149,26 +161,37 @@ void *hdl_probe_dpi_create(const char *path, int sv_key, int *status) {
     return NULL;
   }
 
-  probe = (hdl_probe_t *)calloc(1, sizeof(*probe));
-  if (probe == NULL) {
+  obj_size = (obj_kind == HDL_PROBE_KIND_REAL) ? 64 : vpi_get(vpiSize, obj);
+  if (obj_kind == HDL_PROBE_KIND_LOGIC4 &&
+      (obj_size < 1 || obj_size > HDL_PROBE_MAX_W)) {
     if (status != NULL) {
-      *status = HDL_PROBE_INTERNAL_ERROR;
+      *status = (obj_size < 1) ? HDL_PROBE_INTERNAL_ERROR : HDL_PROBE_TOO_WIDE;
     }
     vpi_release_handle(obj);
     return NULL;
   }
 
-  size = (kind == HDL_PROBE_KIND_REAL) ? 64 : vpi_get(vpiSize, obj);
+  probe = (hdl_probe_t *)calloc(1, sizeof(*probe));
+  if (probe == NULL) {
+    vpi_release_handle(obj);
+    return NULL;
+  }
 
   probe->self_check = probe;
   probe->obj = obj;
   probe->sv_key = sv_key;
-  probe->kind = kind;
-  probe->size = size;
+  probe->kind = obj_kind;
+  probe->size = obj_size;
   probe->cb = NULL;
 
   if (status != NULL) {
     *status = HDL_PROBE_OK;
+  }
+  if (kind != NULL) {
+    *kind = obj_kind;
+  }
+  if (size != NULL) {
+    *size = obj_size;
   }
   return probe;
 }
@@ -230,16 +253,6 @@ int hdl_probe_dpi_set_enable_callback(void *hnd, int enable) {
     probe->cb = NULL;
   }
   return 1;
-}
-
-int hdl_probe_dpi_get_kind(void *hnd) {
-  hdl_probe_t *probe = checked_probe(hnd);
-  return (probe == NULL) ? HDL_PROBE_KIND_UNKNOWN : probe->kind;
-}
-
-int hdl_probe_dpi_get_size(void *hnd) {
-  hdl_probe_t *probe = checked_probe(hnd);
-  return (probe == NULL) ? 0 : probe->size;
 }
 
 int hdl_probe_dpi_read_logic(void *hnd, svLogicVecVal *dst) {

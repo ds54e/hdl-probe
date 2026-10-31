@@ -116,11 +116,16 @@ module probe_values;
   task automatic check_raw_zero_fill(int mode);
     chandle h;
     int c_status;
+    int c_kind;
+    int c_size;
     logic [HdlProbeMaxW-1:0] raw;
 
-    h = hdl_probe_dpi_create("probe_values.w33", -1, c_status);
+    h = hdl_probe_dpi_create("probe_values.w33", -1, c_status, c_kind, c_size);
     if (h == null || c_status != HDL_PROBE_OK) begin
       $fatal(1, "raw create failed");
+    end
+    if (c_kind != HDL_PROBE_KIND_LOGIC4 || c_size != 33) begin
+      $fatal(1, "raw create metadata mismatch: kind=%0d size=%0d", c_kind, c_size);
     end
     raw = 'x;
     if (!hdl_probe_dpi_read_logic(h, raw)) begin

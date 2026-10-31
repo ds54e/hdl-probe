@@ -27,15 +27,15 @@ package hdl_probe_pkg;
   import "DPI-C" context function chandle hdl_probe_dpi_create(
     input string path,
     input int sv_key,
-    output int status
+    output int status,
+    output int kind,
+    output int size
   );
   import "DPI-C" context function int hdl_probe_dpi_destroy(input chandle hnd);
   import "DPI-C" context function int hdl_probe_dpi_set_enable_callback(
     input chandle hnd,
     input int enable
   );
-  import "DPI-C" context function int hdl_probe_dpi_get_kind(input chandle hnd);
-  import "DPI-C" context function int hdl_probe_dpi_get_size(input chandle hnd);
   import "DPI-C" context function int hdl_probe_dpi_read_logic(
     input chandle hnd,
     output logic [HdlProbeMaxW-1:0] value
@@ -132,19 +132,6 @@ package hdl_probe_pkg;
       m_callback_enabled = 0;
     endfunction
 
-    protected function void m_reset_connect_state();
-      if (m_sv_key >= 0 && hdl_probes_by_key.exists(
-              m_sv_key
-          ) && hdl_probes_by_key[m_sv_key] == this) begin
-        hdl_probes_by_key.delete(m_sv_key);
-      end
-      m_handle = null;
-      m_kind = HDL_PROBE_KIND_UNKNOWN;
-      m_n_bits = 0;
-      m_sv_key = -1;
-      m_callback_enabled = 0;
-    endfunction
-
     protected function automatic bit m_has_callback_demand();
       return (m_active_waiters != 0) || (m_callbacks.size() != 0);
     endfunction
@@ -172,8 +159,13 @@ package hdl_probe_pkg;
     function void destroy();
       if (m_handle != null) begin
         void'(hdl_probe_dpi_destroy(m_handle));
+        hdl_probes_by_key.delete(m_sv_key);
       end
-      m_reset_connect_state();
+      m_handle = null;
+      m_kind = HDL_PROBE_KIND_UNKNOWN;
+      m_n_bits = 0;
+      m_sv_key = -1;
+      m_callback_enabled = 0;
     endfunction
 
     static function hdl_probe get(string path);
@@ -266,38 +258,25 @@ package hdl_probe_pkg;
 
     function hdl_probe_status_e connect();
       int c_status;
-      int raw_n_bits;
+      int c_kind;
+      int c_size;
       hdl_probe_status_e ret_status;
 
       if (m_handle != null) begin
         return HDL_PROBE_OK;
       end
 
-      c_status = HDL_PROBE_INTERNAL_ERROR;
       m_sv_key = hdl_probe_next_sv_key;
       hdl_probe_next_sv_key++;
 
-      m_handle   = hdl_probe_dpi_create(m_path, m_sv_key, c_status);
-      ret_status = hdl_probe_status_e'(c_status);
-      if (m_handle == null || ret_status != HDL_PROBE_OK) begin
-        m_reset_connect_state();
-        return ret_status;
+      m_handle = hdl_probe_dpi_create(m_path, m_sv_key, c_status, c_kind, c_size);
+      if (m_handle == null) begin
+        m_sv_key = -1;
+        return hdl_probe_status_e'(c_status);
       end
 
-      m_kind = hdl_probe_kind_e'(hdl_probe_dpi_get_kind(m_handle));
-      raw_n_bits = hdl_probe_dpi_get_size(m_handle);
-      if (raw_n_bits < 0) begin
-        ret_status = HDL_PROBE_INTERNAL_ERROR;
-        destroy();
-        return ret_status;
-      end
-      m_n_bits = raw_n_bits[31:0];
-
-      if (m_kind == HDL_PROBE_KIND_LOGIC4 && m_n_bits > HdlProbeMaxW) begin
-        ret_status = HDL_PROBE_TOO_WIDE;
-        destroy();
-        return ret_status;
-      end
+      m_kind = hdl_probe_kind_e'(c_kind);
+      m_n_bits = c_size[31:0];
 
       hdl_probes_by_key[m_sv_key] = this;
       ret_status = m_update_callback_state();
