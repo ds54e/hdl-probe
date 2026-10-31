@@ -261,7 +261,6 @@ package hdl_probe_pkg;
         hdl_probes_by_key.delete(key);
       end
       hdl_probes_by_path.delete();
-      hdl_probes_by_key.delete();
       hdl_probe_next_sv_key = 0;
     endfunction
 

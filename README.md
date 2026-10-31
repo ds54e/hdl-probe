@@ -70,3 +70,4 @@ Outputs/logs: `build/xezim/`. `CC` defaults to `cc` and must name an executable 
 - Changes use VPI callbacks, not polling; make loads the library with `--dpi-lib`.
 - `hdl_probe::cleanup()` destroys live probes and resets path/key caches and key allocation.
 - Pending waits survive `destroy()` / `cleanup()` until the same probe object reconnects and its value changes.
+- Typed waits resolve by path; `get()` after `cleanup()` returns a new object that cannot resume the old wait; retain a probe and use the instance API for waits across teardown.
