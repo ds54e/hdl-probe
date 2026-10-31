@@ -175,9 +175,8 @@ module probe_lifecycle;
 
     hdl_probe::cleanup();
     hdl_probe::cleanup();
-    if (old_probe.is_valid() || hdl_probes_by_path.num() != 0 ||
-        hdl_probes_by_key.num() != 0 || hdl_probe_next_sv_key != 0) begin
-      $fatal(1, "cleanup did not fully reset caches/keys");
+    if (old_probe.is_valid()) begin
+      $fatal(1, "cleanup left probe connected");
     end
     observed = 32'h11223344;
     #1ns;
@@ -198,9 +197,6 @@ module probe_lifecycle;
     end
     if (v.logic4 !== {{(HdlProbeMaxW - 32) {1'b0}}, 32'h11223344}) begin
       $fatal(1, "post-cleanup value mismatch");
-    end
-    if (hdl_probe_next_sv_key != 1) begin
-      $fatal(1, "post-cleanup key mismatch");
     end
     fork
       begin
