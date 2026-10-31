@@ -6,11 +6,10 @@
 #include "sv_vpi_user.h"
 #include "svdpi.h"
 
-#define vpi_release_handle vpi_free_object
-
 /* Keep in sync with HdlProbeMaxW in sv/hdl_probe_pkg.sv. */
 #define HDL_PROBE_MAX_W 1024
 
+/* Keep status values in sync with hdl_probe_status_e in sv/hdl_probe_pkg.sv. */
 enum {
   HDL_PROBE_OK = 0,
   HDL_PROBE_NOT_FOUND = 1,
@@ -18,6 +17,7 @@ enum {
   HDL_PROBE_INTERNAL_ERROR = 5
 };
 
+/* Keep kind values in sync with hdl_probe_kind_e in sv/hdl_probe_pkg.sv. */
 enum {
   HDL_PROBE_KIND_UNKNOWN = 0,
   HDL_PROBE_KIND_LOGIC4 = 1,
@@ -37,33 +37,28 @@ extern void hdl_probe_value_change_notify(int sv_key);
 
 static svScope g_pkg_scope = NULL;
 
-static void report_error(const char *fmt, const char *arg) {
-  if (arg != NULL) {
-    vpi_printf((PLI_BYTE8 *)"HDL_PROBE ERROR: ");
-    vpi_printf((PLI_BYTE8 *)fmt, arg);
-    vpi_printf((PLI_BYTE8 *)"\n");
-  } else {
-    vpi_printf((PLI_BYTE8 *)"HDL_PROBE ERROR: %s\n", fmt);
-  }
-}
-
+/* Helps detect a wrong chandle, but cannot detect use-after-free. */
 static hdl_probe_t *checked_probe(void *hnd) {
   hdl_probe_t *probe = (hdl_probe_t *)hnd;
   if (probe != NULL && probe->self_check == probe) {
     return probe;
   }
 
-  report_error("bad probe handle", NULL);
+  vpi_printf("HDL_PROBE ERROR: bad probe handle\n");
   return NULL;
 }
 
 static int get_typespec_kind(vpiHandle obj) {
   vpiHandle typespec = vpi_handle(vpiTypespec, obj);
+  int typespec_type;
+
   if (typespec == NULL) {
     return HDL_PROBE_KIND_UNKNOWN;
   }
 
-  switch (vpi_get(vpiType, typespec)) {
+  typespec_type = vpi_get(vpiType, typespec);
+  vpi_release_handle(typespec);
+  switch (typespec_type) {
     case vpiEnumTypespec:
     case vpiBitTypespec:
     case vpiLogicTypespec:

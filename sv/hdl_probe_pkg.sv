@@ -7,6 +7,7 @@ package hdl_probe_pkg;
 
   localparam int unsigned HdlProbeMaxW = 1024;
 
+  // Keep status values in sync with c/hdl_probe.c.
   typedef enum int {
     HDL_PROBE_OK = 0,
     HDL_PROBE_NOT_FOUND = 1,
@@ -16,6 +17,7 @@ package hdl_probe_pkg;
     HDL_PROBE_INTERNAL_ERROR = 5
   } hdl_probe_status_e;
 
+  // Keep kind values in sync with c/hdl_probe.c.
   typedef enum int {
     HDL_PROBE_KIND_UNKNOWN = 0,
     HDL_PROBE_KIND_LOGIC4 = 1,
