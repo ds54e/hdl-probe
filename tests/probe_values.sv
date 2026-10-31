@@ -111,6 +111,31 @@ module probe_values;
     end
   endtask
 
+  // Contract test of the C DPI layer: read() clears its value first,
+  // so only a direct call can show missing upper-word zeroing.
+  task automatic check_raw_zero_fill(int mode);
+    chandle h;
+    int c_status;
+    logic [HdlProbeMaxW-1:0] raw;
+
+    h = hdl_probe_dpi_create("probe_values.w33", -1, c_status);
+    if (h == null || c_status != HDL_PROBE_OK) begin
+      $fatal(1, "raw create failed");
+    end
+    raw = 'x;
+    if (!hdl_probe_dpi_read_logic(h, raw)) begin
+      $fatal(1, "raw read failed mode=%0d", mode);
+    end
+    for (int unsigned i = 0; i < HdlProbeMaxW; i++) begin
+      if (i < 33 ? raw[i] !== expected_bit(mode, i) : raw[i] !== 1'b0) begin
+        $fatal(1, "raw mode=%0d bit=%0d actual=0b%0b", mode, i, raw[i]);
+      end
+    end
+    if (!hdl_probe_dpi_destroy(h)) begin
+      $fatal(1, "raw destroy failed");
+    end
+  endtask
+
   initial begin : test
     hdl_probe p;
     hdl_probe_value v;
@@ -132,6 +157,7 @@ module probe_values;
       check_packed("probe_values.w32", 32, mode);
       check_packed("probe_values.w33", 33, mode);
       check_packed("probe_values.w1024", 1024, mode);
+      check_raw_zero_fill(mode);
     end
 
     p  = hdl_probe::get("probe_values.analog_value");
