@@ -1,6 +1,5 @@
 module example_core;
-  timeunit 1ns;
-  timeprecision 1ps;
+  timeunit 1ns; timeprecision 1ps;
   import hdl_probe_pkg::*;
 
   logic [3:0] observed;

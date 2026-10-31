@@ -43,7 +43,9 @@ lint-verible:
 	verible-verilog-lint --rules_config=$(ROOT)/.rules.verible_lint $(SV_FILES)
 
 lint-slang:
-	slang -Weverything -Werror -Wno-unused-but-set-variable $(SLANG_FILES)
+	# Library public methods and constructors may be unused by an example.
+	slang -Weverything -Werror -Wno-unused-but-set-variable \
+	  -Wno-unused-class-method -Wno-unused-constructor $(SLANG_FILES)
 
 fmt:
 	verible-verilog-format --inplace $(SV_FILES)

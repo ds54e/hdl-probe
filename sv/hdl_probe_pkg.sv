@@ -1,4 +1,5 @@
 package hdl_probe_pkg;
+  timeunit 1ns; timeprecision 1ps;
 
   typedef class hdl_probe;
   typedef class hdl_probe_value;
@@ -279,34 +280,37 @@ package hdl_probe_pkg;
       return 1;
     endfunction
 
-    static task wait_change(string path, ref hdl_probe_value v, ref hdl_probe_status_e st);
-      hdl_probe probe;
-
-      probe = get(path);
-      probe.wait_for_change(v, st);
-    endtask
-
     static task wait_logic_change(string path, output logic [HdlProbeMaxW-1:0] value);
+      hdl_probe probe;
       hdl_probe_value v;
       hdl_probe_status_e st;
 
       value = '0;
-      wait_change(path, v, st);
-      if (st != HDL_PROBE_OK || v == null || v.kind != HDL_PROBE_KIND_LOGIC4) begin
-        value = '0;
+      probe = get(path);
+      probe.wait_for_change(v, st);
+      if (st != HDL_PROBE_OK) begin
+        $fatal(1, "hdl_probe: wait_logic_change(%s) failed: %s", path, st.name());
+      end else if (v == null || v.kind != HDL_PROBE_KIND_LOGIC4) begin
+        $fatal(1, "hdl_probe: wait_logic_change(%s) kind mismatch", path);
       end else begin
         value = v.logic4;
       end
     endtask
 
     static task wait_real_change(string path, output real value);
+      hdl_probe probe;
       hdl_probe_value v;
       hdl_probe_status_e st;
 
       value = 0.0;
-      wait_change(path, v, st);
-      if (st != HDL_PROBE_OK || v == null || !v.get_real(value)) begin
-        value = 0.0;
+      probe = get(path);
+      probe.wait_for_change(v, st);
+      if (st != HDL_PROBE_OK) begin
+        $fatal(1, "hdl_probe: wait_real_change(%s) failed: %s", path, st.name());
+      end else if (v == null || v.kind != HDL_PROBE_KIND_REAL) begin
+        $fatal(1, "hdl_probe: wait_real_change(%s) kind mismatch", path);
+      end else begin
+        value = v.r;
       end
     endtask
 
