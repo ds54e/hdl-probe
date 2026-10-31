@@ -115,9 +115,6 @@ package hdl_probe_pkg;
   class hdl_probe;
     protected string m_path;
     protected chandle m_handle;
-    protected bit m_connected;
-    protected bit m_connect_attempted;
-    protected hdl_probe_status_e m_connect_status;
     protected hdl_probe_kind_e m_kind;
     protected int unsigned m_n_bits;
     protected int m_sv_key;
@@ -132,9 +129,6 @@ package hdl_probe_pkg;
     function new(string path = "");
       m_path = path;
       m_handle = null;
-      m_connected = 0;
-      m_connect_attempted = 0;
-      m_connect_status = HDL_PROBE_INTERNAL_ERROR;
       m_kind = HDL_PROBE_KIND_UNKNOWN;
       m_n_bits = 0;
       m_sv_key = -1;
@@ -153,9 +147,6 @@ package hdl_probe_pkg;
         hdl_probes_by_key.delete(m_sv_key);
       end
       m_handle = null;
-      m_connected = 0;
-      m_connect_attempted = 0;
-      m_connect_status = HDL_PROBE_INTERNAL_ERROR;
       m_kind = HDL_PROBE_KIND_UNKNOWN;
       m_n_bits = 0;
       m_sv_key = -1;
@@ -217,7 +208,7 @@ package hdl_probe_pkg;
     protected function automatic hdl_probe_status_e m_update_callback_state();
       bit want_enabled;
 
-      if (!m_connected || m_handle == null) begin
+      if (m_handle == null) begin
         return HDL_PROBE_OK;
       end
 
@@ -332,24 +323,16 @@ package hdl_probe_pkg;
       int raw_n_bits;
       hdl_probe_status_e ret_status;
 
-      if (m_connected) begin
+      if (m_handle != null) begin
         return HDL_PROBE_OK;
       end
-
-      if (m_connect_attempted) begin
-        return m_connect_status;
-      end
-
-      m_connect_attempted = 1;
 
       if (!hdl_probe_callback_scope_captured) begin
         hdl_probe_callback_scope_captured = (hdl_probe_dpi_capture_callback_scope() != 0);
         if (!hdl_probe_callback_scope_captured) begin
           $warning("hdl_probe_pkg: failed to capture package callback scope");
-          m_connect_status = HDL_PROBE_INTERNAL_ERROR;
-          ret_status = m_connect_status;
           m_reset_connect_state();
-          return ret_status;
+          return HDL_PROBE_INTERNAL_ERROR;
         end
       end
 
@@ -357,10 +340,9 @@ package hdl_probe_pkg;
       m_sv_key = hdl_probe_next_sv_key;
       hdl_probe_next_sv_key++;
 
-      m_handle = hdl_probe_dpi_create(m_path, m_sv_key, c_status);
-      m_connect_status = hdl_probe_status_e'(c_status);
-      if (m_handle == null || m_connect_status != HDL_PROBE_OK) begin
-        ret_status = m_connect_status;
+      m_handle   = hdl_probe_dpi_create(m_path, m_sv_key, c_status);
+      ret_status = hdl_probe_status_e'(c_status);
+      if (m_handle == null || ret_status != HDL_PROBE_OK) begin
         m_reset_connect_state();
         return ret_status;
       end
@@ -373,9 +355,6 @@ package hdl_probe_pkg;
         return ret_status;
       end
       m_n_bits = raw_n_bits[31:0];
-      hdl_probes_by_key[m_sv_key] = this;
-      m_connected = 1;
-      m_connect_status = HDL_PROBE_OK;
 
       if (m_kind == HDL_PROBE_KIND_LOGIC4 && m_n_bits > HdlProbeMaxW) begin
         ret_status = HDL_PROBE_TOO_WIDE;
@@ -383,18 +362,18 @@ package hdl_probe_pkg;
         return ret_status;
       end
 
+      hdl_probes_by_key[m_sv_key] = this;
       ret_status = m_update_callback_state();
       if (ret_status != HDL_PROBE_OK) begin
         destroy();
         return ret_status;
       end
 
-      m_connect_status = HDL_PROBE_OK;
-      return m_connect_status;
+      return HDL_PROBE_OK;
     endfunction
 
     function bit is_valid();
-      return m_connected;
+      return m_handle != null;
     endfunction
 
     function string get_path();
@@ -420,7 +399,7 @@ package hdl_probe_pkg;
         m_callbacks.push_back(cb);
         st = m_update_callback_state();
         if (st != HDL_PROBE_OK) begin
-          m_connect_status = st;
+          $warning("hdl_probe: add_callback(%s) callback sync failed: %s", m_path, st.name());
         end
       end
     endfunction
@@ -437,7 +416,7 @@ package hdl_probe_pkg;
 
       st = m_update_callback_state();
       if (st != HDL_PROBE_OK) begin
-        m_connect_status = st;
+        $warning("hdl_probe: remove_callback(%s) callback sync failed: %s", m_path, st.name());
       end
     endfunction
 
