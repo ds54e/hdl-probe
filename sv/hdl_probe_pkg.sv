@@ -28,8 +28,6 @@ package hdl_probe_pkg;
     output int status
   );
   import "DPI-C" context function int hdl_probe_dpi_destroy(input chandle hnd);
-  import "DPI-C" context function int hdl_probe_dpi_capture_callback_scope();
-  import "DPI-C" context function int hdl_probe_dpi_clear_callback_scope();
   import "DPI-C" context function int hdl_probe_dpi_set_enable_callback(
     input chandle hnd,
     input int enable
@@ -48,7 +46,6 @@ package hdl_probe_pkg;
   hdl_probe hdl_probes_by_path[string];
   hdl_probe hdl_probes_by_key[int];
   int hdl_probe_next_sv_key = 0;
-  bit hdl_probe_callback_scope_captured = 0;
 
   class hdl_probe_value;
     hdl_probe_kind_e kind;
@@ -261,8 +258,6 @@ package hdl_probe_pkg;
       hdl_probes_by_path.delete();
       hdl_probes_by_key.delete();
       hdl_probe_next_sv_key = 0;
-      hdl_probe_callback_scope_captured = 0;
-      void'(hdl_probe_dpi_clear_callback_scope());
     endfunction
 
     function hdl_probe_status_e connect();
@@ -272,15 +267,6 @@ package hdl_probe_pkg;
 
       if (m_handle != null) begin
         return HDL_PROBE_OK;
-      end
-
-      if (!hdl_probe_callback_scope_captured) begin
-        hdl_probe_callback_scope_captured = (hdl_probe_dpi_capture_callback_scope() != 0);
-        if (!hdl_probe_callback_scope_captured) begin
-          $warning("hdl_probe_pkg: failed to capture package callback scope");
-          m_reset_connect_state();
-          return HDL_PROBE_INTERNAL_ERROR;
-        end
       end
 
       c_status = HDL_PROBE_INTERNAL_ERROR;

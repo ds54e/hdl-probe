@@ -121,7 +121,7 @@ static PLI_INT32 hdl_probe_dpi_value_change_callback(p_cb_data cb_data) {
     svSetScope(g_pkg_scope);
   }
   hdl_probe_value_change_notify(probe->sv_key);
-  if (g_pkg_scope != NULL && previous_scope != NULL) {
+  if (g_pkg_scope != NULL) {
     svSetScope(previous_scope);
   }
 
@@ -133,6 +133,10 @@ void *hdl_probe_dpi_create(const char *path, int sv_key, int *status) {
   hdl_probe_t *probe;
   int kind;
   int size;
+
+  if (g_pkg_scope == NULL) {
+    g_pkg_scope = svGetScope();
+  }
 
   obj = vpi_handle_by_name((PLI_BYTE8 *)path, NULL);
   if (obj == NULL) {
@@ -173,16 +177,6 @@ void *hdl_probe_dpi_create(const char *path, int sv_key, int *status) {
     *status = HDL_PROBE_OK;
   }
   return probe;
-}
-
-int hdl_probe_dpi_capture_callback_scope(void) {
-  g_pkg_scope = svGetScope();
-  return (g_pkg_scope != NULL);
-}
-
-int hdl_probe_dpi_clear_callback_scope(void) {
-  g_pkg_scope = NULL;
-  return 1;
 }
 
 int hdl_probe_dpi_destroy(void *hnd) {

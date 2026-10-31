@@ -65,8 +65,8 @@ module probe_lifecycle;
     hdl_probe::cleanup();
     hdl_probe::cleanup();
     if (old_probe.is_valid() || hdl_probes_by_path.num() != 0 ||
-        hdl_probes_by_key.num() != 0 || hdl_probe_next_sv_key != 0 ||
-        hdl_probe_callback_scope_captured != 0) $fatal(1, "cleanup did not fully reset caches/scope/keys");
+        hdl_probes_by_key.num() != 0 || hdl_probe_next_sv_key != 0)
+      $fatal(1, "cleanup did not fully reset caches/keys");
     observed = 32'h11223344;
     #1ns;
     if (old_cb.calls != 2) $fatal(1, "cleanup left callback active");
@@ -79,8 +79,8 @@ module probe_lifecycle;
     st = new_probe.read(v);
     if (st != HDL_PROBE_OK || v == null) $fatal(1, "post-cleanup read failed status=%0d", st);
     if (v.logic4 !== {{(HdlProbeMaxW-32){1'b0}}, 32'h11223344} ||
-        hdl_probe_next_sv_key != 1 || !hdl_probe_callback_scope_captured)
-      $fatal(1, "post-cleanup scope/key/value mismatch");
+        hdl_probe_next_sv_key != 1)
+      $fatal(1, "post-cleanup key/value mismatch");
     fork
       begin
         new_probe.wait_for_change(v, st);
