@@ -1,10 +1,10 @@
 # hdl-probe
 
-`hdl_probe` is an XEZIM HDL path probe library centered on `hdl_probe_pkg`. It supports packed 4-state logic (`0/1/X/Z`) and `real`. The public SV API and DPI declarations live in `sv/hdl_probe_pkg.sv`.
+`hdl_probe` is an Xezim HDL path probe library centered on `hdl_probe_pkg`. It supports packed 4-state logic (`0/1/X/Z`) and `real`. The public SV API and DPI declarations live in `sv/hdl_probe_pkg.sv`.
 
 ## Build and run
 
-Use a prepared official XEZIM executable, its headers and a C compiler. Nothing is downloaded or installed by make.
+Use a prepared official Xezim executable, its headers and a C compiler. Nothing is downloaded or installed by make.
 
 ```bash
 make                       # core example; no UVM source required
@@ -18,7 +18,7 @@ make clean
 
 `XEZIM_SOURCE` defaults to `tools/xezim` in this checkout, with executable `target/release/xezim` and headers in `include`. Override it with `make XEZIM_SOURCE=/absolute/path/to/xezim`, or set `XEZIM` and `XEZIM_INCLUDE` independently. Use absolute tool paths because simulations run in per-top directories. `UVM_SRC` must contain `uvm_pkg.sv` and `uvm_macros.svh`.
 
-The library and run logs are under `build/xezim/`. `CC` defaults to `cc`; use `CPPFLAGS`, `CFLAGS` and `LDFLAGS` for library build options. `CC` must name a compiler executable: XEZIM also uses it to generate DPI-export glue, even with a prebuilt simulator. `XEZIM_FLAGS` defaults to `--no-cache --error-exit --max-time 2us`; `RUN_TIMEOUT` defaults to 120 seconds per run. Examples/regressions require an exact PASS marker and exit 0. `example-all` runs core then UVM; the UVM example is a typed-helper/reporting smoke test, not a full UVM suite.
+The library and run logs are under `build/xezim/`. `CC` defaults to `cc`; use `CPPFLAGS`, `CFLAGS` and `LDFLAGS` for library build options. `CC` must name a compiler executable: Xezim also uses it to generate DPI-export glue, even with a prebuilt simulator. `XEZIM_FLAGS` defaults to `--no-cache --error-exit --max-time 2us`; `RUN_TIMEOUT` defaults to 120 seconds per run. Examples/regressions require an exact PASS marker and exit 0. `example-all` runs core then UVM; the UVM example is a typed-helper/reporting smoke test, not a full UVM suite.
 
 ## Examples
 
