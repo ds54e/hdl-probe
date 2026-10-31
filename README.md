@@ -1,71 +1,85 @@
 # hdl-probe
 
-`hdl_probe_pkg` probes Xezim HDL paths as packed 4-state logic (`0/1/X/Z`) or `real`. API: `sv/hdl_probe_pkg.sv`.
+Read and watch HDL signals by path in [Xezim](https://github.com/aionhw/xezim). Supports packed 4-state logic (up to 1024 bits) and `real`.
 
-## Examples
+## Setup
 
-The instance API is primary for handling failures: `connect()` and `read(value)` return `hdl_probe_status_e`, while `wait_for_change(value, status)` reports status by reference.
-
-```systemverilog
-import hdl_probe_pkg::*;
-
-hdl_probe probe;
-hdl_probe_value value;
-hdl_probe_status_e status;
-logic [HdlProbeMaxW-1:0] bits;
-int unsigned n_bits;
-
-probe = hdl_probe::get("top.dut.state");
-status = probe.read(value);
-if (status == HDL_PROBE_OK && value.get_logic(bits, n_bits)) begin
-  // use bits[n_bits-1:0]
-end
-```
-
-Typed helpers are conveniences for known valid paths: reads return a success bit; waits call `$fatal` on failure or kind mismatch.
-
-```systemverilog
-import hdl_probe_pkg::*;
-
-logic [7:0] bits;
-real temp;
-
-if (!hdl_probe::read_logic("top.dut.state", bits))
-  $fatal(1, "logic read failed");
-if (!hdl_probe::read_real("top.dut.temp", temp))
-  $fatal(1, "real read failed");
-
-hdl_probe::wait_logic_change("top.dut.state", bits);
-hdl_probe::wait_real_change("top.dut.temp", temp);
-```
-
-Also available: `destroy()`, `is_valid()`, `get_path()`, `get_kind()`, `get_size()`, `get_change_count()`, and `add_callback(cb)` / `remove_callback(cb)`; subclass `hdl_probe_cb` with `do_on_change(hdl_probe p, hdl_probe_value v)`.
-
-`hdl_probe_value`: public `clear()`, `copy_from(rhs)`, `get_logic(bits, width)` and `get_real(value)` utilities (getters return a success bit).
-
-## Build and run
-
-Supply prepared official Xezim, its headers and a C compiler; make fetches nothing.
+Run from the repository root with Xezim on `PATH`.
 
 ```bash
-make                       # test-core (default)
-make build-lib
-make example-core
-make test-core
-make clean
+make build-lib XEZIM_SOURCE=/abs/path/to/xezim
+CC=cc xezim --dpi-lib build/xezim/libhdl_probe_dpi.so -s top sv/hdl_probe_pkg.sv your_design.sv
 ```
 
-`XEZIM_SOURCE` defaults to `tools/xezim` (`target/release/xezim`, headers in `include`). Override with `make XEZIM_SOURCE=/absolute/path/to/xezim` or set `XEZIM` and `XEZIM_INCLUDE` separately; use absolute tool paths.
+- `make build-lib` builds the DPI library into `build/xezim/`.
+- `CC` must name a C compiler: xezim uses it to build glue code for the package's DPI export.
 
-Outputs/logs: `build/xezim/`. `CC` defaults to `cc` and must name an executable for library and DPI glue builds. `CPPFLAGS`, `CFLAGS`, `LDFLAGS` control library options. `XEZIM_FLAGS` defaults to `--no-cache --error-exit --max-time 2us`; `RUN_TIMEOUT` defaults to 120 seconds per run. Runs require exit 0 and an exact PASS marker.
+## Usage
 
-## Notes
+All examples use this design. The usage snippets below are independent fragments for an `initial` block in `top`, with `import hdl_probe_pkg::*;` in the module. Wait examples assume later stimulus from another process; run the intentional `$fatal` example separately.
 
-- UVM code can import `hdl_probe_pkg::*` normally because the library has no UVM dependency.
-- Typed logic outputs may be narrower when the signal width is known; use the instance API for width or precise failure status.
-- Typed wait helpers call `$fatal` on failure; typed read helpers return a success bit.
-- `connect()` returns `HDL_PROBE_TOO_WIDE` for packed widths above `HdlProbeMaxW` (1024).
-- Changes use VPI callbacks, not polling; make loads the library with `--dpi-lib`.
-- `hdl_probe::cleanup()` destroys live probes and resets path/key caches and key allocation.
-- Pending waits survive `destroy()` / `cleanup()` until the same probe object reconnects and its value changes.
-- Typed waits resolve by path; `get()` after `cleanup()` returns a new object that cannot resume the old wait; retain a probe and use the instance API for waits across teardown.
+```systemverilog
+module top;
+  dut dut();
+endmodule
+
+module dut;
+  logic [7:0] state = 8'b1100_xz01;
+  real        temp  = 1.25;
+endmodule
+```
+
+There are two ways to use the package:
+
+- **Typed helpers** (`hdl_probe::read_logic` etc.): one call per access. Use them when you know the path is right.
+- **Probe objects**: `get()` returns a probe; `read()` returns a status and `wait_for_change()` sets `st`.
+
+### Typed helpers
+
+```systemverilog
+logic [7:0]  state;
+logic [15:0] wide;
+real         temp;
+bit          ok;
+
+// Read
+ok = hdl_probe::read_logic("top.dut.state", state);  // -> ok = 1, state = 8'b1100_xz01 (X/Z kept)
+ok = hdl_probe::read_logic("top.dut.state", wide);   // -> ok = 1, wide = 16'b0000_0000_1100_xz01
+ok = hdl_probe::read_real ("top.dut.temp",  temp);   // -> ok = 1, temp = 1.25
+
+// Read failures return 0 and clear the output
+ok = hdl_probe::read_logic("top.dut.typo",  state);  // -> ok = 0, state = 0 (no such path)
+ok = hdl_probe::read_real ("top.dut.state", temp);   // -> ok = 0, temp = 0  (not a real)
+
+// Wait: blocks until the signal changes, then returns the new value
+hdl_probe::wait_logic_change("top.dut.state", state);  // design does state = 8'h42 -> state = 8'h42
+hdl_probe::wait_real_change ("top.dut.temp",  temp);   // design does temp = 2.5    -> temp = 2.5
+
+// Wait failures stop the simulation
+hdl_probe::wait_logic_change("top.dut.typo", state);   // -> $fatal
+```
+
+### Probe objects
+
+```systemverilog
+hdl_probe          p;
+hdl_probe_value    v;
+hdl_probe_status_e st;
+
+// Read
+p  = hdl_probe::get("top.dut.state");
+st = p.read(v);  // -> st = HDL_PROBE_OK, v.kind = HDL_PROBE_KIND_LOGIC4,
+                 //    v.n_bits = 8, v.logic4 = 8'b1100_xz01 (upper bits 0)
+
+p  = hdl_probe::get("top.dut.temp");
+st = p.read(v);  // -> st = HDL_PROBE_OK, v.kind = HDL_PROBE_KIND_REAL, v.r = 1.25
+
+// Failures return a status (no $fatal)
+p  = hdl_probe::get("top.dut.typo");
+st = p.read(v);  // -> st = HDL_PROBE_NOT_FOUND
+                 //    (others: HDL_PROBE_UNSUPPORTED_KIND, HDL_PROBE_TOO_WIDE for > 1024 bits)
+
+// Wait
+p = hdl_probe::get("top.dut.state");
+p.wait_for_change(v, st);  // design does state = 8'h42 -> st = HDL_PROBE_OK, v.logic4 = 8'h42
+```
