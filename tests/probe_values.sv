@@ -182,9 +182,11 @@ module probe_values;
     if (v.get_logic(bits, width) || bits !== '0 || width != 0) begin
       $fatal(1, "get_logic on real must fail and zero outputs");
     end
+    bits = '1;
     if (hdl_probe::read_logic("probe_values.analog_value", bits) || bits !== '0) begin
       $fatal(1, "typed logic on real must fail and zero output");
     end
+    r = 123.0;
     if (hdl_probe::read_real("probe_values.w33", r) || r != 0.0) begin
       $fatal(1, "typed real on logic must fail and zero output");
     end
@@ -213,8 +215,13 @@ module probe_values;
     if (st != HDL_PROBE_NOT_FOUND) begin
       $fatal(1, "missing read status=%0d", st);
     end
+    bits = '1;
     if (hdl_probe::read_logic("probe_values.missing", bits) || bits !== '0) begin
       $fatal(1, "missing typed read mismatch");
+    end
+    r = 123.0;
+    if (hdl_probe::read_real("probe_values.missing", r) || r != 0.0) begin
+      $fatal(1, "missing typed real read mismatch");
     end
     p  = hdl_probe::get("probe_values.w1025");
     st = p.connect();

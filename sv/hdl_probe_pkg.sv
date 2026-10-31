@@ -132,10 +132,6 @@ package hdl_probe_pkg;
       m_callback_enabled = 0;
     endfunction
 
-    protected function automatic bit m_has_callback_demand();
-      return (m_active_waiters != 0) || (m_callbacks.size() != 0);
-    endfunction
-
     protected function automatic hdl_probe_status_e m_update_callback_state();
       bit want_enabled;
 
@@ -143,7 +139,7 @@ package hdl_probe_pkg;
         return HDL_PROBE_OK;
       end
 
-      want_enabled = m_has_callback_demand();
+      want_enabled = (m_active_waiters != 0) || (m_callbacks.size() != 0);
       if (want_enabled == m_callback_enabled) begin
         return HDL_PROBE_OK;
       end
@@ -176,51 +172,33 @@ package hdl_probe_pkg;
     endfunction
 
     static function bit read_logic(string path, output logic [HdlProbeMaxW-1:0] value);
-      hdl_probe probe;
       hdl_probe_value v;
-      hdl_probe_status_e st;
+      int unsigned width;
 
       value = '0;
-      probe = get(path);
-      st = probe.read(v);
-      if (st != HDL_PROBE_OK || v == null || v.kind != HDL_PROBE_KIND_LOGIC4) begin
-        return 0;
-      end
-
-      value = v.logic4;
-      return 1;
+      return get(path).read(v) == HDL_PROBE_OK && v.get_logic(value, width);
     endfunction
 
     static function bit read_real(string path, output real value);
-      hdl_probe probe;
       hdl_probe_value v;
-      hdl_probe_status_e st;
 
       value = 0.0;
-      probe = get(path);
-      st = probe.read(v);
-      if (st != HDL_PROBE_OK || v == null || v.kind != HDL_PROBE_KIND_REAL) begin
-        return 0;
-      end
-
-      value = v.r;
-      return 1;
+      return get(path).read(v) == HDL_PROBE_OK && v.get_real(value);
     endfunction
 
     static task wait_logic_change(string path, output logic [HdlProbeMaxW-1:0] value);
       hdl_probe probe;
       hdl_probe_value v;
       hdl_probe_status_e st;
+      int unsigned width;
 
       value = '0;
       probe = get(path);
       probe.wait_for_change(v, st);
       if (st != HDL_PROBE_OK) begin
         $fatal(1, "hdl_probe: wait_logic_change(%s) failed: %s", path, st.name());
-      end else if (v == null || v.kind != HDL_PROBE_KIND_LOGIC4) begin
+      end else if (v == null || !v.get_logic(value, width)) begin
         $fatal(1, "hdl_probe: wait_logic_change(%s) kind mismatch", path);
-      end else begin
-        value = v.logic4;
       end
     endtask
 
@@ -234,10 +212,8 @@ package hdl_probe_pkg;
       probe.wait_for_change(v, st);
       if (st != HDL_PROBE_OK) begin
         $fatal(1, "hdl_probe: wait_real_change(%s) failed: %s", path, st.name());
-      end else if (v == null || v.kind != HDL_PROBE_KIND_REAL) begin
+      end else if (v == null || !v.get_real(value)) begin
         $fatal(1, "hdl_probe: wait_real_change(%s) kind mismatch", path);
-      end else begin
-        value = v.r;
       end
     endtask
 
