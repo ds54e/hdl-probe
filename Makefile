@@ -2,8 +2,7 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -e -o pipefail -c
 .DEFAULT_GOAL := test-core
-.PHONY: build-lib fmt lint lint-verible lint-slang example-core example-uvm example-all clean \
-        check-uvm test-core
+.PHONY: build-lib fmt lint lint-verible lint-slang example-core clean test-core
 
 ROOT := $(abspath .)
 BUILD_DIR := $(ROOT)/build/xezim
@@ -13,12 +12,11 @@ CPPFLAGS ?=
 CFLAGS ?= -std=c11 -fPIC -g -Wall -Wextra -Werror
 LDFLAGS ?=
 
-# No recipes fetch or build the simulator or UVM. Supply prepared official tools.
+# No recipes fetch or build the simulator. Supply prepared official tools.
 XEZIM_SOURCE ?= $(ROOT)/tools/xezim
 XEZIM ?= $(XEZIM_SOURCE)/target/release/xezim
 XEZIM_INCLUDE ?= $(XEZIM_SOURCE)/include
 XEZIM_FLAGS ?= --no-cache --error-exit --max-time 2us
-UVM_SRC ?=
 RUN_TIMEOUT ?= 120
 CHECKED_RUN := bash $(ROOT)/tests/run_checked.sh
 
@@ -55,18 +53,6 @@ example-core: build-lib
 	mkdir -p "$(BUILD_DIR)/example-core/tmp"
 	cd "$(BUILD_DIR)/example-core"
 	CC="$(CC)" TMPDIR="$$PWD/tmp" $(CHECKED_RUN) "$(RUN_TIMEOUT)" run.log 'HDL_PROBE_PASS example_core' -- "$(XEZIM)" $(XEZIM_FLAGS) --dpi-lib "$(DPI_LIB)" -s example_core $(CORE_SV) $(ROOT)/examples/example_core.sv
-
-check-uvm:
-	@test -n "$(UVM_SRC)" && test -f "$(UVM_SRC)/uvm_pkg.sv" && test -f "$(UVM_SRC)/uvm_macros.svh" || { echo 'Set UVM_SRC to the prepared official UVM src directory' >&2; exit 1; }
-
-example-uvm: check-uvm build-lib
-	mkdir -p "$(BUILD_DIR)/example-uvm/tmp"
-	cd "$(BUILD_DIR)/example-uvm"
-	CC="$(CC)" TMPDIR="$$PWD/tmp" $(CHECKED_RUN) "$(RUN_TIMEOUT)" run.log 'HDL_PROBE_PASS example_uvm' -- "$(XEZIM)" $(XEZIM_FLAGS) --dpi-lib "$(DPI_LIB)" -I"$(abspath $(UVM_SRC))" -s example_uvm "$(abspath $(UVM_SRC))/uvm_pkg.sv" $(CORE_SV) $(ROOT)/examples/example_uvm.sv
-
-example-all:
-	$(MAKE) example-core
-	$(MAKE) example-uvm
 
 # Each top is a separate process so a values failure cannot hide a callback hang.
 test-core: build-lib
