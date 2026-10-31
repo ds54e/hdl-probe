@@ -1,6 +1,5 @@
 module probe_values;
-  timeunit 1ns;
-  timeprecision 1ps;
+  timeunit 1ns; timeprecision 1ps;
   import hdl_probe_pkg::*;
 
   logic w1;
@@ -17,7 +16,7 @@ module probe_values;
   end
 
   // The oracle uses SV bit states, not VPI aval/bval packing or probe reads.
-  function automatic logic expected_bit(int mode, int index);
+  function automatic logic expected_bit(int mode, int unsigned index);
     case (mode)
       0: return 1'b0;
       1: return 1'b1;
@@ -29,6 +28,7 @@ module probe_values;
           1: return 1'b1;
           2: return 1'bx;
           3: return 1'bz;
+          default: return 1'bx;
         endcase
       end
       5: begin
@@ -65,13 +65,13 @@ module probe_values;
       end
       default: $fatal(1, "bad drive mode %0d", mode);
     endcase
-    w1 = w1024[0];
+    w1  = w1024[0];
     w31 = w1024[30:0];
     w32 = w1024[31:0];
     w33 = w1024[32:0];
   endtask
 
-  task automatic check_packed(string path, int width, int mode);
+  task automatic check_packed(string path, int unsigned width, int mode);
     hdl_probe p;
     hdl_probe_value v;
     hdl_probe_status_e st;
@@ -92,19 +92,23 @@ module probe_values;
       $fatal(1, "%s value width failed", path);
     end
     typed_bits = 'x;
-    if (!hdl_probe::read_logic(path, typed_bits)) $fatal(1, "%s typed read failed", path);
-    for (int i = 0; i < HdlProbeMaxW; i++) begin
+    if (!hdl_probe::read_logic(path, typed_bits)) begin
+      $fatal(1, "%s typed read failed", path);
+    end
+    for (int unsigned i = 0; i < HdlProbeMaxW; i++) begin
       if (i < width) begin
-        if (bits[i] !== expected_bit(mode, i) || typed_bits[i] !== expected_bit(mode, i))
-          $fatal(1, "%s mode=%0d bit=%0d expected=%b actual=%b typed=%b",
-                 path, mode, i, expected_bit(mode, i), bits[i], typed_bits[i]);
+        if (bits[i] !== expected_bit(mode, i) || typed_bits[i] !== expected_bit(mode, i)) begin
+          $fatal(1, "%s mode=%0d bit=%0d expected=0b%0b actual=0b%0b typed=0b%0b", path, mode, i,
+                 expected_bit(mode, i), bits[i], typed_bits[i]);
+        end
       end else if (bits[i] !== 1'b0 || typed_bits[i] !== 1'b0) begin
         $fatal(1, "%s upper bit %0d not zero", path, i);
       end
     end
     wrong_real = 123.0;
-    if (v.get_real(wrong_real) || wrong_real != 0.0)
+    if (v.get_real(wrong_real) || wrong_real != 0.0) begin
       $fatal(1, "get_real on logic must fail and zero output");
+    end
   endtask
 
   initial begin : test
@@ -130,43 +134,66 @@ module probe_values;
       check_packed("probe_values.w1024", 1024, mode);
     end
 
-    p = hdl_probe::get("probe_values.analog_value");
+    p  = hdl_probe::get("probe_values.analog_value");
     st = p.read(v);
-    if (st != HDL_PROBE_OK || p.get_kind() != HDL_PROBE_KIND_REAL || p.get_size() != 64)
+    if (st != HDL_PROBE_OK || p.get_kind() != HDL_PROBE_KIND_REAL || p.get_size() != 64) begin
       $fatal(1, "real metadata/read failed status=%0d", st);
-    if (!v.get_real(r) || r != -3.25 || !hdl_probe::read_real("probe_values.analog_value", r) || r != -3.25)
+    end
+    if (!v.get_real(
+            r
+        ) || r != -3.25 || !hdl_probe::read_real(
+            "probe_values.analog_value", r
+        ) || r != -3.25) begin
       $fatal(1, "real read mismatch");
-    bits = 'x;
+    end
+    bits  = 'x;
     width = 99;
-    if (v.get_logic(bits, width) || bits !== '0 || width != 0)
+    if (v.get_logic(bits, width) || bits !== '0 || width != 0) begin
       $fatal(1, "get_logic on real must fail and zero outputs");
-    if (hdl_probe::read_logic("probe_values.analog_value", bits) || bits !== '0)
+    end
+    if (hdl_probe::read_logic("probe_values.analog_value", bits) || bits !== '0) begin
       $fatal(1, "typed logic on real must fail and zero output");
-    if (hdl_probe::read_real("probe_values.w33", r) || r != 0.0)
+    end
+    if (hdl_probe::read_real("probe_values.w33", r) || r != 0.0) begin
       $fatal(1, "typed real on logic must fail and zero output");
+    end
 
     copied = new();
     copied.copy_from(v);
     v.clear();
-    if (!copied.get_real(r) || r != -3.25 || v.kind != HDL_PROBE_KIND_UNKNOWN ||
-        v.n_bits != 0 || v.logic4 !== '0 || v.r != 0.0)
+    if (!copied.get_real(
+            r
+        ) || r != -3.25 || v.kind != HDL_PROBE_KIND_UNKNOWN || v.n_bits != 0 || v.logic4 !== '0 ||
+            v.r != 0.0) begin
       $fatal(1, "value copy/clear mismatch");
+    end
     copied.copy_from(null);
     if (copied.kind != HDL_PROBE_KIND_UNKNOWN || copied.n_bits != 0 ||
-        copied.logic4 !== '0 || copied.r != 0.0) $fatal(1, "copy_from(null) mismatch");
+        copied.logic4 !== '0 || copied.r != 0.0) begin
+      $fatal(1, "copy_from(null) mismatch");
+    end
 
-    p = hdl_probe::get("probe_values.missing");
+    p  = hdl_probe::get("probe_values.missing");
     st = p.connect();
-    if (st != HDL_PROBE_NOT_FOUND || p.is_valid()) $fatal(1, "missing path status=%0d", st);
+    if (st != HDL_PROBE_NOT_FOUND || p.is_valid()) begin
+      $fatal(1, "missing path status=%0d", st);
+    end
     st = p.read(v);
-    if (st != HDL_PROBE_NOT_FOUND) $fatal(1, "missing read status=%0d", st);
-    if (hdl_probe::read_logic("probe_values.missing", bits) || bits !== '0)
+    if (st != HDL_PROBE_NOT_FOUND) begin
+      $fatal(1, "missing read status=%0d", st);
+    end
+    if (hdl_probe::read_logic("probe_values.missing", bits) || bits !== '0) begin
       $fatal(1, "missing typed read mismatch");
-    p = hdl_probe::get("probe_values.w1025");
+    end
+    p  = hdl_probe::get("probe_values.w1025");
     st = p.connect();
-    if (st != HDL_PROBE_TOO_WIDE || p.is_valid()) $fatal(1, "1025-bit connect status=%0d", st);
+    if (st != HDL_PROBE_TOO_WIDE || p.is_valid()) begin
+      $fatal(1, "1025-bit connect status=%0d", st);
+    end
     st = p.read(v);
-    if (st != HDL_PROBE_TOO_WIDE || p.is_valid()) $fatal(1, "1025-bit read status=%0d", st);
+    if (st != HDL_PROBE_TOO_WIDE || p.is_valid()) begin
+      $fatal(1, "1025-bit read status=%0d", st);
+    end
 
     hdl_probe::cleanup();
     $display("HDL_PROBE_PASS probe_values");

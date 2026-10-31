@@ -7,7 +7,7 @@
 Use a prepared official Xezim executable, its headers and a C compiler. Nothing is downloaded or installed by make.
 
 ```bash
-make                       # core example; no UVM source required
+make                       # core regressions; no UVM source required
 make build-lib
 make example-core
 make test-core

@@ -1,6 +1,5 @@
 module probe_callbacks;
-  timeunit 1ns;
-  timeprecision 1ps;
+  timeunit 1ns; timeprecision 1ps;
   import hdl_probe_pkg::*;
 
   logic [32:0] observed;
@@ -18,19 +17,26 @@ module probe_callbacks;
       hdl_probe_value nested;
       hdl_probe_status_e st;
       calls++;
-      if (p != expected_probe || v == null || v.kind != expected_kind)
+      if (p != expected_probe || v == null || v.kind != expected_kind) begin
         $fatal(1, "callback identity/kind mismatch");
+      end
       // This reenters DPI/VPI while the original VPI callback is on the stack.
       st = p.read(nested);
-      if (st != HDL_PROBE_OK || nested == null) $fatal(1, "callback nested read failed");
-      if (expected_kind == HDL_PROBE_KIND_LOGIC4) begin
-        if (v.n_bits != 33 || v.logic4 !== expected_bits || nested.logic4 !== expected_bits)
-          $fatal(1, "callback logic snapshot/nested read mismatch");
-      end else begin
-        if (v.n_bits != 64 || v.r != expected_real || nested.r != expected_real)
-          $fatal(1, "callback real snapshot/nested read mismatch");
+      if (st != HDL_PROBE_OK || nested == null) begin
+        $fatal(1, "callback nested read failed");
       end
-      if (remove_self) p.remove_callback(this);
+      if (expected_kind == HDL_PROBE_KIND_LOGIC4) begin
+        if (v.n_bits != 33 || v.logic4 !== expected_bits || nested.logic4 !== expected_bits) begin
+          $fatal(1, "callback logic snapshot/nested read mismatch");
+        end
+      end else begin
+        if (v.n_bits != 64 || v.r != expected_real || nested.r != expected_real) begin
+          $fatal(1, "callback real snapshot/nested read mismatch");
+        end
+      end
+      if (remove_self) begin
+        p.remove_callback(this);
+      end
     endfunction
   endclass
 
@@ -41,14 +47,19 @@ module probe_callbacks;
     full_expected = '0;
     full_expected[32:0] = expected;
     p.wait_for_change(v, st);
-    if (st != HDL_PROBE_OK || v == null) $fatal(1, "logic waiter status=%0d", st);
-    if (v.kind != HDL_PROBE_KIND_LOGIC4 || v.n_bits != 33 || v.logic4 !== full_expected)
+    if (st != HDL_PROBE_OK || v == null) begin
+      $fatal(1, "logic waiter status=%0d", st);
+    end
+    if (v.kind != HDL_PROBE_KIND_LOGIC4 || v.n_bits != 33 || v.logic4 !== full_expected) begin
       $fatal(1, "logic waiter value mismatch");
+    end
   endtask
 
   initial begin : watchdog
     #500ns;
-    $fatal(1, "probe_callbacks timeout: VPI -> C -> package DPI export -> class wait did not complete");
+    $fatal(
+        1,
+        "probe_callbacks timeout: VPI -> C -> package DPI export -> class wait did not complete");
   end
 
   initial begin : test
@@ -66,13 +77,19 @@ module probe_callbacks;
     observed = '0;
     analog_value = 0.5;
     #1ns;
-    p = hdl_probe::get("probe_callbacks.observed");
+    p  = hdl_probe::get("probe_callbacks.observed");
     st = p.connect();
-    if (st != HDL_PROBE_OK || p.get_change_count() != 0) $fatal(1, "logic connect failed");
+    if (st != HDL_PROBE_OK || p.get_change_count() != 0) begin
+      $fatal(1, "logic connect failed");
+    end
     rp = hdl_probe::get("probe_callbacks.analog_value");
     st = rp.read(rv);
-    if (st != HDL_PROBE_OK || rv == null) $fatal(1, "initial real read failed");
-    if (rv.r != 0.5) $fatal(1, "initial real mismatch");
+    if (st != HDL_PROBE_OK || rv == null) begin
+      $fatal(1, "initial real read failed");
+    end
+    if (rv.r != 0.5) begin
+      $fatal(1, "initial real mismatch");
+    end
 
     cb = new();
     cb.expected_probe = p;
@@ -89,10 +106,14 @@ module probe_callbacks;
       end
     join
     #1ns;
-    if (cb.calls != 1 || p.get_change_count() != 1) $fatal(1, "multiple waiter/callback count mismatch");
+    if (cb.calls != 1 || p.get_change_count() != 1) begin
+      $fatal(1, "multiple waiter/callback count mismatch");
+    end
     observed = {1'bx, 32'h80000001};
     #1ns;
-    if (cb.calls != 1 || p.get_change_count() != 1) $fatal(1, "same-value write delivered callback");
+    if (cb.calls != 1 || p.get_change_count() != 1) begin
+      $fatal(1, "same-value write delivered callback");
+    end
 
     rcb = new();
     rcb.expected_probe = rp;
@@ -102,8 +123,12 @@ module probe_callbacks;
     fork
       begin
         rp.wait_for_change(rv, st);
-        if (st != HDL_PROBE_OK || rv == null) $fatal(1, "real waiter status=%0d", st);
-        if (rv.kind != HDL_PROBE_KIND_REAL || rv.r != -2.75) $fatal(1, "real waiter value mismatch");
+        if (st != HDL_PROBE_OK || rv == null) begin
+          $fatal(1, "real waiter status=%0d", st);
+        end
+        if (rv.kind != HDL_PROBE_KIND_REAL || rv.r != -2.75) begin
+          $fatal(1, "real waiter value mismatch");
+        end
       end
       begin
         #1ns;
@@ -111,15 +136,21 @@ module probe_callbacks;
       end
     join
     #1ns;
-    if (rcb.calls != 1 || rp.get_change_count() != 1) $fatal(1, "real callback count mismatch");
+    if (rcb.calls != 1 || rp.get_change_count() != 1) begin
+      $fatal(1, "real callback count mismatch");
+    end
     rp.remove_callback(rcb);
     analog_value = 4.5;
     #1ns;
-    if (rcb.calls != 1 || rp.get_change_count() != 1) $fatal(1, "real callback removal failed");
+    if (rcb.calls != 1 || rp.get_change_count() != 1) begin
+      $fatal(1, "real callback removal failed");
+    end
     fork
       begin
         hdl_probe::wait_real_change("probe_callbacks.analog_value", typed_real);
-        if (typed_real != 8.25) $fatal(1, "typed real wait mismatch");
+        if (typed_real != 8.25) begin
+          $fatal(1, "typed real wait mismatch");
+        end
       end
       begin
         #1ns;
@@ -130,13 +161,16 @@ module probe_callbacks;
     count_before = rp.get_change_count();
     analog_value = 9.5;
     #1ns;
-    if (count_before != 2 || rp.get_change_count() != count_before)
+    if (count_before != 2 || rp.get_change_count() != count_before) begin
       $fatal(1, "last real waiter did not remove VPI callback");
+    end
 
     p.remove_callback(cb);
     observed = '0;
     #1ns;
-    if (cb.calls != 1 || p.get_change_count() != 1) $fatal(1, "logic callback removal failed");
+    if (cb.calls != 1 || p.get_change_count() != 1) begin
+      $fatal(1, "logic callback removal failed");
+    end
     // Duplicate registration is allowed; removal deletes only one occurrence.
     cb.expected_bits = '0;
     cb.expected_bits[32:0] = {1'bz, 32'h12345678};
@@ -144,13 +178,17 @@ module probe_callbacks;
     p.add_callback(cb);
     observed = {1'bz, 32'h12345678};
     #1ns;
-    if (cb.calls != 3 || p.get_change_count() != 2) $fatal(1, "duplicate callback delivery mismatch");
+    if (cb.calls != 3 || p.get_change_count() != 2) begin
+      $fatal(1, "duplicate callback delivery mismatch");
+    end
     p.remove_callback(cb);
     cb.expected_bits = '0;
     cb.expected_bits[32:0] = 33'h100000001;
     observed = 33'h100000001;
     #1ns;
-    if (cb.calls != 4 || p.get_change_count() != 3) $fatal(1, "single callback removal mismatch");
+    if (cb.calls != 4 || p.get_change_count() != 3) begin
+      $fatal(1, "single callback removal mismatch");
+    end
     p.remove_callback(cb);
 
     self_cb = new();
@@ -161,15 +199,20 @@ module probe_callbacks;
     p.add_callback(self_cb);
     observed = '0;
     #1ns;
-    if (self_cb.calls != 1 || p.get_change_count() != 4) $fatal(1, "self-removing callback failed");
+    if (self_cb.calls != 1 || p.get_change_count() != 4) begin
+      $fatal(1, "self-removing callback failed");
+    end
     observed = 33'h7;
     #1ns;
-    if (self_cb.calls != 1 || p.get_change_count() != 4) $fatal(1, "self-removal left callback active");
+    if (self_cb.calls != 1 || p.get_change_count() != 4) begin
+      $fatal(1, "self-removal left callback active");
+    end
     fork
       begin
         hdl_probe::wait_logic_change("probe_callbacks.observed", typed_logic);
-        if (typed_logic !== {{(HdlProbeMaxW-33){1'b0}}, 33'h100000005})
+        if (typed_logic !== {{(HdlProbeMaxW - 33) {1'b0}}, 33'h100000005}) begin
           $fatal(1, "typed logic wait mismatch");
+        end
       end
       begin
         #1ns;
@@ -177,10 +220,14 @@ module probe_callbacks;
       end
     join
     #1ns;
-    if (p.get_change_count() != 5) $fatal(1, "wait-only callback did not reconnect");
+    if (p.get_change_count() != 5) begin
+      $fatal(1, "wait-only callback did not reconnect");
+    end
     observed = '0;
     #1ns;
-    if (p.get_change_count() != 5) $fatal(1, "last logic waiter did not remove VPI callback");
+    if (p.get_change_count() != 5) begin
+      $fatal(1, "last logic waiter did not remove VPI callback");
+    end
 
     hdl_probe::cleanup();
     $display("HDL_PROBE_PASS probe_callbacks");

@@ -1,7 +1,7 @@
 .ONESHELL:
 SHELL := /bin/bash
 .SHELLFLAGS := -e -o pipefail -c
-.DEFAULT_GOAL := example-core
+.DEFAULT_GOAL := test-core
 .PHONY: build-lib fmt lint lint-verible lint-slang example-core example-uvm example-all clean \
         check-uvm test-core
 
@@ -23,8 +23,9 @@ RUN_TIMEOUT ?= 120
 CHECKED_RUN := bash $(ROOT)/tests/run_checked.sh
 
 CORE_SV := $(ROOT)/sv/hdl_probe_pkg.sv
-SV_FILES := $(sort $(wildcard $(ROOT)/sv/*.sv) $(wildcard $(ROOT)/sv/*.svh) $(wildcard $(ROOT)/examples/*.sv))
-SLANG_FILES := $(CORE_SV) $(ROOT)/examples/example_core.sv
+SV_FILES := $(sort $(wildcard $(ROOT)/sv/*.sv) $(wildcard $(ROOT)/sv/*.svh) \
+                  $(wildcard $(ROOT)/examples/*.sv) $(wildcard $(ROOT)/tests/*.sv))
+SLANG_FILES := $(CORE_SV) $(ROOT)/examples/example_core.sv $(wildcard $(ROOT)/tests/*.sv)
 CORE_TESTS := probe_values probe_callbacks probe_lifecycle
 
 build-lib: $(DPI_LIB)
@@ -69,7 +70,6 @@ example-all:
 
 # Each top is a separate process so a values failure cannot hide a callback hang.
 test-core: build-lib
-	set -euo pipefail
 	status=0
 	for top in $(CORE_TESTS); do
 	  mkdir -p "$(BUILD_DIR)/$$top/tmp"

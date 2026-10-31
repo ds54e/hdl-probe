@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # A successful process exit is necessary, but not sufficient, for a test pass.
+# In-test watchdogs catch logical hangs; --max-time caps simulation time; RUN_TIMEOUT caps wall time.
 set -euo pipefail
 if [[ $# -lt 5 || $4 != -- ]]; then
   echo 'usage: run_checked.sh seconds log exact-pass-marker -- command [args...]' >&2
