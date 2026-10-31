@@ -140,8 +140,6 @@ package hdl_probe_pkg;
       m_kind = HDL_PROBE_KIND_UNKNOWN;
       m_n_bits = 0;
       m_sv_key = -1;
-      m_change_count = 0;
-      m_active_waiters = 0;
       m_callback_enabled = 0;
     endfunction
 
@@ -250,10 +248,15 @@ package hdl_probe_pkg;
     endtask
 
     static function void cleanup();
-      foreach (hdl_probes_by_path[path]) begin
-        if (hdl_probes_by_path[path] != null) begin
-          hdl_probes_by_path[path].destroy();
+      int key;
+
+      while (hdl_probes_by_key.first(
+          key
+      ) != 0) begin
+        if (hdl_probes_by_key[key] != null) begin
+          hdl_probes_by_key[key].destroy();
         end
+        hdl_probes_by_key.delete(key);
       end
       hdl_probes_by_path.delete();
       hdl_probes_by_key.delete();
@@ -411,9 +414,7 @@ package hdl_probe_pkg;
       previous_change_count = m_change_count;
       wait (m_change_count != previous_change_count);
 
-      if (m_active_waiters != 0) begin
-        m_active_waiters--;
-      end
+      m_active_waiters--;
 
       st = m_update_callback_state();
       if (st != HDL_PROBE_OK) begin

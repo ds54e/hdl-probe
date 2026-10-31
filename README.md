@@ -64,3 +64,4 @@ hdl_probe::wait_real_change("top.dut.temp", temp);
 - `connect()` returns `HDL_PROBE_TOO_WIDE` for packed widths above `HdlProbeMaxW` (1024).
 - Changes use VPI callbacks through the package DPI export, not polling. The build loads the library with `--dpi-lib`.
 - `hdl_probe::cleanup()` destroys live probes and resets path/key caches and key allocation.
+- Pending waits survive `destroy()` / `cleanup()` until the same probe object reconnects and its value changes.
