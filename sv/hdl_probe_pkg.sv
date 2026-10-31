@@ -108,6 +108,7 @@ package hdl_probe_pkg;
     function new();
     endfunction
 
+    // Each notification shares one value; mutations affect later callbacks.
     virtual function void do_on_change(hdl_probe p, hdl_probe_value v);
     endfunction
   endclass
@@ -121,9 +122,6 @@ package hdl_probe_pkg;
     protected int unsigned m_change_count;
     protected int unsigned m_active_waiters;
     protected bit m_callback_enabled;
-    protected hdl_probe_value m_cached_change_value;
-    protected int unsigned m_cached_change_count;
-    protected bit m_cached_change_valid;
     protected hdl_probe_cb m_callbacks[$];
 
     function new(string path = "");
@@ -135,9 +133,6 @@ package hdl_probe_pkg;
       m_change_count = 0;
       m_active_waiters = 0;
       m_callback_enabled = 0;
-      m_cached_change_value = null;
-      m_cached_change_count = 0;
-      m_cached_change_valid = 0;
     endfunction
 
     protected function void m_reset_connect_state();
@@ -153,52 +148,6 @@ package hdl_probe_pkg;
       m_change_count = 0;
       m_active_waiters = 0;
       m_callback_enabled = 0;
-      m_cached_change_value = null;
-      m_cached_change_count = 0;
-      m_cached_change_valid = 0;
-    endfunction
-
-    protected function void m_invalidate_cached_change();
-      m_cached_change_valid = 0;
-      m_cached_change_count = 0;
-      if (m_cached_change_value != null) begin
-        m_cached_change_value.clear();
-      end
-    endfunction
-
-    protected function automatic bit m_has_cached_change_for_current_count();
-      return m_cached_change_valid && (m_cached_change_count == m_change_count) &&
-             (m_cached_change_value != null);
-    endfunction
-
-    protected function automatic hdl_probe_status_e m_copy_cached_change(ref hdl_probe_value v);
-      if (!m_has_cached_change_for_current_count()) begin
-        return HDL_PROBE_READ_ERROR;
-      end
-
-      if (v == null) begin
-        v = new();
-      end
-      v.copy_from(m_cached_change_value);
-      return HDL_PROBE_OK;
-    endfunction
-
-    protected function automatic hdl_probe_status_e m_refresh_cached_change();
-      hdl_probe_status_e st;
-
-      if (m_cached_change_value == null) begin
-        m_cached_change_value = new();
-      end
-
-      st = read(m_cached_change_value);
-      if (st != HDL_PROBE_OK) begin
-        m_invalidate_cached_change();
-        return st;
-      end
-
-      m_cached_change_count = m_change_count;
-      m_cached_change_valid = 1;
-      return HDL_PROBE_OK;
     endfunction
 
     protected function automatic bit m_has_callback_demand();
@@ -515,36 +464,24 @@ package hdl_probe_pkg;
         return;
       end
 
-      if (m_has_cached_change_for_current_count()) begin
-        st = m_copy_cached_change(v);
-      end else begin
-        st = read(v);
-      end
+      st = read(v);
     endtask
 
     function void m_dpi_notify_change();
       hdl_probe_value value;
-      hdl_probe_status_e st;
       hdl_probe_cb callback_snapshot[$];
 
       m_change_count++;
-      m_invalidate_cached_change();
-
-      if (!m_has_callback_demand()) begin
-        return;
-      end
-
-      st = m_refresh_cached_change();
-      if (st != HDL_PROBE_OK) begin
-        return;
-      end
 
       if (m_callbacks.size() == 0) begin
         return;
       end
 
-      value = new();
-      value.copy_from(m_cached_change_value);
+      value = null;
+      if (read(value) != HDL_PROBE_OK) begin
+        return;
+      end
+
       callback_snapshot = m_callbacks;
       foreach (callback_snapshot[i]) begin
         if (callback_snapshot[i] != null) begin
