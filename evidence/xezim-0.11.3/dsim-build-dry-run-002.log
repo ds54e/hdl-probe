@@ -1,0 +1,2 @@
+mkdir -p "/home/dot-worker/hdl-probe-20261031/source-002/build"
+gcc -DDSIM -fPIC -g -I/home/dot-worker/.local/lib/altairdsim/current/include -shared -o /home/dot-worker/hdl-probe-20261031/source-002/build/libhdl_probe_dpi.so /home/dot-worker/hdl-probe-20261031/source-002/c/hdl_probe.c

@@ -1,0 +1,21 @@
+=== xezim 0.11.3 ===
+git unknown (unknown)
+UVM_INFO /home/dot-worker/hdl-probe-20261031/tools/uvm-core/src/base/uvm_root.svh(476) @ 20000: reporter [UVM/RELNOTES] 
+  ***********       IMPORTANT RELEASE NOTES         ************
+
+  This implementation of the UVM Library deviates from the 1800.2-2020
+  standard.  See the DEVIATIONS.md file contained in the release
+  for more details.
+
+----------------------------------------------------------------
+Accellera:1800.2:UVM:2020.3.1
+
+All copyright owners for this kit are listed in NOTICE.txt
+All Rights Reserved Worldwide
+----------------------------------------------------------------
+
+      (Specify +UVM_NO_RELNOTES to turn off this notice)
+
+UVM_INFO /home/dot-worker/hdl-probe-20261031/source-001/examples/example_uvm.sv(52) @ 20000: reporter [EXAMPLE] example_uvm passed
+HDL_PROBE_PASS example_uvm
+Simulation finished at time 21000 ($finish called)

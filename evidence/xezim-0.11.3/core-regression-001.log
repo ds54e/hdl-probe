@@ -1,0 +1,24 @@
+set -euo pipefail
+status=0
+for top in probe_values probe_callbacks probe_lifecycle; do
+mkdir -p "/home/dot-worker/hdl-probe-20261031/source-001/build/xezim/$top/tmp"
+if (cd "/home/dot-worker/hdl-probe-20261031/source-001/build/xezim/$top" &&
+CC="gcc" TMPDIR="$PWD/tmp" bash /home/dot-worker/hdl-probe-20261031/source-001/tests/run_checked.sh "120" run.log "HDL_PROBE_PASS $top" -- "/home/dot-worker/hdl-probe-20261031/tools/xezim/target/release/xezim" --no-cache --error-exit --max-time 2us --dpi-lib "/home/dot-worker/hdl-probe-20261031/source-001/build/xezim/libhdl_probe_dpi.so" -s "$top" /home/dot-worker/hdl-probe-20261031/source-001/sv/hdl_probe_pkg.sv "/home/dot-worker/hdl-probe-20261031/source-001/tests/$top.sv"); then
+:
+else
+status=1
+fi
+done
+exit "$status"
+=== xezim 0.11.3 ===
+git unknown (unknown)
+HDL_PROBE_PASS probe_values
+Simulation finished at time 7000 ($finish called)
+=== xezim 0.11.3 ===
+git unknown (unknown)
+HDL_PROBE_PASS probe_callbacks
+Simulation finished at time 18000 ($finish called)
+=== xezim 0.11.3 ===
+git unknown (unknown)
+HDL_PROBE_PASS probe_lifecycle
+Simulation finished at time 7000 ($finish called)

@@ -1,10 +1,17 @@
 module example_uvm;
+  timeunit 1ns;
+  timeprecision 1ps;
   import uvm_pkg::*;
   import hdl_probe_pkg::*;
   `include "uvm_macros.svh"
 
   logic [3:0] observed;
   real analog_value;
+
+  initial begin : watchdog
+    #100ns;
+    $fatal(1, "example_uvm timeout");
+  end
 
   initial begin : stimulus
     observed = 4'h0;
@@ -17,6 +24,7 @@ module example_uvm;
     logic [3:0] bits;
     real real_value;
 
+    #1ns;
     if (!hdl_probe::read_logic("example_uvm.observed", bits)) begin
       `uvm_fatal("EXAMPLE", "initial hdl_probe::read_logic failed")
     end
@@ -42,6 +50,8 @@ module example_uvm;
     end
 
     `uvm_info("EXAMPLE", "example_uvm passed", UVM_NONE)
+    hdl_probe::cleanup();
+    $display("HDL_PROBE_PASS example_uvm");
     #1ns;
     $finish;
   end

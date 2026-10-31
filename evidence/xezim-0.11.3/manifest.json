@@ -1,0 +1,107 @@
+{
+  "recorded_utc": "2026-10-31T06:02:50.103357+00:00",
+  "worker": "dot-worker-01",
+  "source_base": "7eca94110d9f7b71f30f0ee1336085b5c2e0568c",
+  "source_archive_sha256": "a0c736a1999d4b61a0174598d0448344c8143d72597daf0bce50b81e06aa842a",
+  "xezim": {
+    "version": "0.11.3",
+    "source_commit": "9fadb2eb4996d5b18100455e82e27f0de573fa4f",
+    "core_commit": "0cf68756f152f6dc1d2328d720e5c5a95bc90612",
+    "binary_sha256": "fb3978c53423d130e9aee0ece76f8fe9aef802b950f42e43f4e5257845f8116c",
+    "banner_git": "unknown: source archive deliberately omitted .git",
+    "build": "cargo build --release --bin xezim",
+    "profile_overrides": {
+      "CARGO_BUILD_JOBS": "1",
+      "CARGO_PROFILE_RELEASE_LTO": "false",
+      "CARGO_PROFILE_RELEASE_CODEGEN_UNITS": "16",
+      "CARGO_PROFILE_RELEASE_DEBUG": "0"
+    },
+    "nice": 10,
+    "rustc": "1.92.0 (ded5c06cf 2025-12-08)",
+    "cargo": "1.92.0 (344c4567c 2025-10-21)"
+  },
+  "uvm": {
+    "repository": "accellera-official/uvm-core",
+    "tag": "2020.3.1",
+    "commit": "78c06547a2a0a29b3dc9dcafae62b75b2ff61544"
+  },
+  "host": {
+    "architecture": "x86_64",
+    "os": "AlmaLinux 9.8",
+    "cpu_count": 2,
+    "memtotal_MiB": 1705,
+    "gcc": "11.5.0",
+    "shared_worker": true
+  },
+  "results": {
+    "example-core-001": {
+      "snapshot": "source-001",
+      "target": "example-core-xezim",
+      "command": [
+        "make",
+        "-j1",
+        "example-core-xezim",
+        "XEZIM_SOURCE=/home/dot-worker/hdl-probe-20261031/tools/xezim",
+        "XEZIM_UVM_SRC=/home/dot-worker/hdl-probe-20261031/tools/uvm-core/src",
+        "RUN_TIMEOUT=120"
+      ],
+      "start_utc": "2026-10-31T06:00:36.091904+00:00",
+      "status": "PASS",
+      "finish_utc": "2026-10-31T06:00:36.238854+00:00",
+      "wall_seconds": 0.14169467499596067,
+      "max_rss_KiB": 41768,
+      "exit_code": 0
+    },
+    "core-regression-001": {
+      "snapshot": "source-001",
+      "target": "test-core-xezim",
+      "command": [
+        "make",
+        "-j1",
+        "test-core-xezim",
+        "XEZIM_SOURCE=/home/dot-worker/hdl-probe-20261031/tools/xezim",
+        "XEZIM_UVM_SRC=/home/dot-worker/hdl-probe-20261031/tools/uvm-core/src",
+        "RUN_TIMEOUT=120"
+      ],
+      "start_utc": "2026-10-31T06:00:46.146936+00:00",
+      "status": "PASS",
+      "finish_utc": "2026-10-31T06:00:46.974393+00:00",
+      "wall_seconds": 0.8226311330072349,
+      "max_rss_KiB": 42012,
+      "exit_code": 0
+    },
+    "example-uvm-001": {
+      "snapshot": "source-001",
+      "target": "example-uvm-xezim",
+      "command": [
+        "make",
+        "-j1",
+        "example-uvm-xezim",
+        "XEZIM_SOURCE=/home/dot-worker/hdl-probe-20261031/tools/xezim",
+        "XEZIM_UVM_SRC=/home/dot-worker/hdl-probe-20261031/tools/uvm-core/src",
+        "RUN_TIMEOUT=120"
+      ],
+      "start_utc": "2026-10-31T06:00:55.788458+00:00",
+      "status": "PASS",
+      "finish_utc": "2026-10-31T06:00:56.489445+00:00",
+      "wall_seconds": 0.6950353299907874,
+      "max_rss_KiB": 196204,
+      "exit_code": 0
+    }
+  },
+  "baseline_negative": {
+    "library": "unchanged base c/hdl_probe.c",
+    "top": "probe_values",
+    "exit_code": 1,
+    "observed": "probe_values.w33 metadata/read failed status=4",
+    "interpretation": "reproduces cross-word open-array indexing bug; corrected library passes identical test"
+  },
+  "limitations": [
+    "Dsim runtime and Dsim lint tools not available on worker-01; not revalidated",
+    "UVM example checks typed helpers/reporting, not a complete UVM phasing suite",
+    "Cleanup of a still-blocked waiter is outside this regression; API has no cancellation contract",
+    "Timing/RSS are single-run observations on a shared worker, not controlled benchmarks",
+    "Build resource samples observed ~1.4 GiB RSS and up to 1661 MiB total swap used; sampling is not a maximum measurement"
+  ],
+  "raw_archive_sha256": "947fdc45d25dd66e6ee9361d467ffee3223b8e18da89495f117a04b7f7a893c5"
+}

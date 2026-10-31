@@ -1,0 +1,39 @@
+{
+  "verified_utc": "2026-10-31T06:09:01.851004+00:00",
+  "source_002_archive_sha256": "019b2c41f8fee250f48bbbeb5397f0e22bd7af6389b16582395765ebe5b5c35f",
+  "runtime_files_match_source_001": {
+    "tests/probe_callbacks.sv": true,
+    "tests/probe_lifecycle.sv": true,
+    "tests/probe_values.sv": true,
+    "tests/run_checked.sh": true,
+    ".gitignore": true,
+    ".rules.verible_lint": true,
+    "LICENSE": true,
+    "c/hdl_probe.c": true,
+    "examples/example_core.sv": true,
+    "examples/example_uvm.sv": true,
+    "sv/hdl_probe_pkg.sv": true
+  },
+  "makefile_matches_source_002": true,
+  "dsim_legacy_library_path_dry_run": "PASS; runtime NOT_RUN",
+  "final_core_result": {
+    "snapshot": "source-002",
+    "target": "example-core-xezim",
+    "command": [
+      "make",
+      "-j1",
+      "example-core-xezim",
+      "XEZIM_SOURCE=/home/dot-worker/hdl-probe-20261031/tools/xezim",
+      "XEZIM_UVM_SRC=/home/dot-worker/hdl-probe-20261031/tools/uvm-core/src",
+      "RUN_TIMEOUT=120"
+    ],
+    "start_utc": "2026-10-31T06:07:37.517510+00:00",
+    "status": "PASS",
+    "finish_utc": "2026-10-31T06:07:37.712951+00:00",
+    "wall_seconds": 0.1899661419884069,
+    "max_rss_KiB": 41640,
+    "exit_code": 0
+  },
+  "review": "Root independently reviewed C/SV/Make/tests/evidence; Sol High reviewed same implementation with actual logs; legacy Dsim output path finding corrected; no outstanding material finding",
+  "publication": "local only; no push/PR"
+}

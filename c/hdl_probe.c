@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "vpi_user.h"
 #include "sv_vpi_user.h"
 #include "svdpi.h"
 
@@ -259,9 +260,11 @@ int hdl_probe_dpi_get_size(void *hnd) {
 int hdl_probe_dpi_read_logic_words(void *hnd, const svOpenArrayHandle avals,
                                    const svOpenArrayHandle bvals) {
   hdl_probe_t *probe = checked_probe(hnd);
-  s_vpi_value value_s;
+  s_vpi_value value_s = {0};
   p_vpi_vecval vec;
-  svLogicVecVal word;
+  /* VPI and DPI vector records have the same layout, but need not be the
+   * same C struct type. This is a VPI value, so keep its VPI type. */
+  s_vpi_vecval word;
   unsigned int *dst_aval;
   unsigned int *dst_bval;
   int array_size;
@@ -296,6 +299,9 @@ int hdl_probe_dpi_read_logic_words(void *hnd, const svOpenArrayHandle avals,
   value_s.format = vpiVectorVal;
   vpi_get_value(probe->obj, &value_s);
   vec = value_s.value.vector;
+  if (vec == NULL) {
+    return 0;
+  }
 
   for (int chunk = 0; chunk < num_chunks; chunk++) {
     word = vec[chunk];
@@ -303,8 +309,11 @@ int hdl_probe_dpi_read_logic_words(void *hnd, const svOpenArrayHandle avals,
       word.aval &= probe->top_mask;
       word.bval &= probe->top_mask;
     }
-    dst_aval = (unsigned int *)svGetArrElemPtr1(avals, low + (chunk * increment));
-    dst_bval = (unsigned int *)svGetArrElemPtr1(bvals, low + (chunk * increment));
+    /* Chunk zero belongs at the lowest SV index. svIncrement describes
+     * $increment (left >= right ? 1 : -1), not a step from svLow.
+     * In particular, the package's int words[32] has increment -1. */
+    dst_aval = (unsigned int *)svGetArrElemPtr1(avals, low + chunk);
+    dst_bval = (unsigned int *)svGetArrElemPtr1(bvals, low + chunk);
     if (dst_aval == NULL || dst_bval == NULL) {
       return 0;
     }

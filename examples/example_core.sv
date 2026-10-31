@@ -1,8 +1,15 @@
 module example_core;
+  timeunit 1ns;
+  timeprecision 1ps;
   import hdl_probe_pkg::*;
 
   logic [3:0] observed;
   real analog_value;
+
+  initial begin : watchdog
+    #100ns;
+    $fatal(1, "example_core timeout");
+  end
 
   initial begin : stimulus
     observed = 4'h0;
@@ -19,6 +26,7 @@ module example_core;
     int unsigned n_bits;
     real real_value;
 
+    #1ns;  // Let the time-zero stimulus settle before the initial read.
     probe  = hdl_probe::get("example_core.observed");
     status = probe.read(value);
     if (status != HDL_PROBE_OK || value == null || !value.get_logic(
@@ -43,6 +51,8 @@ module example_core;
     end
 
     $display("example_core passed");
+    hdl_probe::cleanup();
+    $display("HDL_PROBE_PASS example_core");
     #1ns;
     $finish;
   end

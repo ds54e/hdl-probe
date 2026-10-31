@@ -1,0 +1,8 @@
+mkdir -p "/home/dot-worker/hdl-probe-20261031/source-001/build/xezim/example-core/tmp"
+cd "/home/dot-worker/hdl-probe-20261031/source-001/build/xezim/example-core"
+CC="gcc" TMPDIR="$PWD/tmp" bash /home/dot-worker/hdl-probe-20261031/source-001/tests/run_checked.sh "120" run.log 'HDL_PROBE_PASS example_core' -- "/home/dot-worker/hdl-probe-20261031/tools/xezim/target/release/xezim" --no-cache --error-exit --max-time 2us --dpi-lib "/home/dot-worker/hdl-probe-20261031/source-001/build/xezim/libhdl_probe_dpi.so" -s example_core /home/dot-worker/hdl-probe-20261031/source-001/sv/hdl_probe_pkg.sv /home/dot-worker/hdl-probe-20261031/source-001/examples/example_core.sv
+=== xezim 0.11.3 ===
+git unknown (unknown)
+example_core passed
+HDL_PROBE_PASS example_core
+Simulation finished at time 21000 ($finish called)
